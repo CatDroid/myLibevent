@@ -11,9 +11,9 @@ g++ server.cpp -o server  -levent -L/home/hanlon/Cat6/libevent-2.0.22-stable/ins
   
 #include<event.h>  
 #include<event2/bufferevent.h>  
-
-
-
+ 
+ 
+#include <pthread.h>
 /*
 
 bufferevent_socket_new	
@@ -30,6 +30,7 @@ bufferevent_free
 
 void socket_read_cb(bufferevent* bev, void* arg)  
 {  
+	printf("tid = %lu \n",  pthread_self() );
     char msg[4096];  
     size_t len = bufferevent_read(bev, msg, sizeof(msg));  
   
@@ -44,7 +45,7 @@ void socket_read_cb(bufferevent* bev, void* arg)
 
 void event_cb(struct bufferevent *bev, short event, void *arg)  
 {  
-  
+	printf("tid = %lu \n",  pthread_self() );
     if (event & BEV_EVENT_EOF)  
         printf("connection closed\n");  
     else if (event & BEV_EVENT_ERROR)  
@@ -56,6 +57,7 @@ void event_cb(struct bufferevent *bev, short event, void *arg)
 
 void accept_cb(int fd, short events, void* arg)  
 {  
+	printf("tid = %lu \n",  pthread_self() ); 
     evutil_socket_t sockfd;  
   
     struct sockaddr_in client;  
@@ -75,12 +77,6 @@ void accept_cb(int fd, short events, void* arg)
 	
 }
 
-
-  
-
-
-  
-  
 
 int tcp_server_init(int port, int listen_num)  {
 	
@@ -118,7 +114,7 @@ error:
   
 int main(int argc, char** argv)  
 {  
-  
+	printf("main tid = %lu \n",  pthread_self() );  
     int listener = tcp_server_init(9999, 10);  
     if( listener == -1 )  {  
         perror(" tcp_server_init error ");  
@@ -131,7 +127,7 @@ int main(int argc, char** argv)
                                         accept_cb, base);  
     event_add(ev_listen, NULL);  
   
-    event_base_dispatch(base);  
+    event_base_dispatch(base);  		//  所有event bufferevent 回调都在主线程回调 !!
     event_base_free(base);  
 	
     return 0;  
