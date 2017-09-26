@@ -36,7 +36,7 @@ void cmd_msg_cb(int fd, short events, void* arg){
     }
 
     struct bufferevent* bev = (struct bufferevent*)arg;
-    //°ÑÖÕ¶ËµÄÏûÏ¢·¢ËÍ¸ø·şÎñÆ÷¶Ë
+    //æŠŠç»ˆç«¯çš„æ¶ˆæ¯å‘é€ç»™æœåŠ¡å™¨ç«¯
     bufferevent_write(bev, msg, ret);
 }
 
@@ -62,7 +62,7 @@ void event_cb(struct bufferevent *bev, short event, void *arg)
     }  
   
     
-    bufferevent_free(bev);  					//  closeÌ×½Ó×Ö ºÍ free¶ÁĞ´»º³åÇø bufferevent  
+    bufferevent_free(bev);  					//  closeå¥—æ¥å­— å’Œ freeè¯»å†™ç¼“å†²åŒº bufferevent  
   
     struct event *ev = (struct event*)arg;  
     event_free(ev);  							//	event_free 					
@@ -79,7 +79,7 @@ int main(int argc, char** argv){
     struct event_base *base = event_base_new();
     struct bufferevent* bev = bufferevent_socket_new(base, -1,   BEV_OPT_CLOSE_ON_FREE);
 
-    //¼àÌıÖÕ¶ËÊäÈëÊÂ¼ş
+    //ç›‘å¬ç»ˆç«¯è¾“å…¥äº‹ä»¶
     struct event* ev_cmd = event_new(base, STDIN_FILENO,  EV_READ | EV_PERSIST,  cmd_msg_cb, (void*)bev);
     event_add(ev_cmd, NULL);
 
@@ -89,7 +89,7 @@ int main(int argc, char** argv){
     server_addr.sin_port = htons(atoi(argv[2]));
     inet_aton(argv[1], &server_addr.sin_addr);
 
-	// socketµÄ´´½¨ºÍÁ¬½Ó¶¼½»¸øbufferevent 
+	// socketçš„åˆ›å»ºå’Œè¿æ¥éƒ½äº¤ç»™bufferevent 
     bufferevent_socket_connect(bev, (struct sockaddr *)&server_addr,  sizeof(server_addr));
 
     bufferevent_setcb(bev, server_msg_cb, NULL, event_cb, (void*)ev_cmd);

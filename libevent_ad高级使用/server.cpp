@@ -31,26 +31,28 @@ void socket_event_cb(bufferevent *bev, short events, void *arg)
     else if (events & BEV_EVENT_ERROR)    
         printf("some other error\n");    
     
-    //Õâ½«×Ô¶¯closeÌ×½Ó×ÖºÍfree¶ÁĞ´»º³åÇø    
+    //è¿™å°†è‡ªåŠ¨closeå¥—æ¥å­—å’Œfreeè¯»å†™ç¼“å†²åŒº    
     bufferevent_free(bev);    
 }       
 
 void socket_read_cb(bufferevent *bev, void *arg){
 	
+	// å³ä½¿ç¼“å†²åŒºæœªè¯»å®Œï¼Œäº‹ä»¶ä¹Ÿä¸ä¼šå†æ¬¡è¢«æ¿€æ´»ï¼ˆé™¤éå†æ¬¡æœ‰æ•°æ®ï¼‰ã€‚å› æ­¤æ­¤å¤„éœ€åå¤è¯»å–ç›´åˆ°å…¨éƒ¨è¯»å–å®Œæ¯•ã€‚
+	// å¯¹äºTCPæ¥è¯´ å¦‚æœæ²¡æœ‰è¯»å–å®Œæ¯• å°†ä¼šå†ä¸‹æ¬¡æ”¶åˆ°è§¦å‘æ—¶å€™ è¯»å–å‡ºæ¥ 
 	printf("socket_read_cb tid = %lu \n",  pthread_self() );
-    char msg[4096];
-    size_t len = bufferevent_read(bev, msg, sizeof(msg)-1 );	//	bufferevent_read ¶Á
+    char msg[10];// 4096
+    size_t len = bufferevent_read(bev, msg, sizeof(msg)-1 );	//	bufferevent_read è¯»
     msg[len] = '\0';
     printf("server read the data %s\n", msg);
 
     char reply[] = "I has read your data";
-    bufferevent_write(bev, reply, strlen(reply) );				//	bufferevent_write Ğ´
+    bufferevent_write(bev, reply, strlen(reply) );				//	bufferevent_write å†™
 }
 
 
 
-//Ò»¸öĞÂ¿Í»§¶ËÁ¬½ÓÉÏ·şÎñÆ÷ÁË    
-//µ±´Ëº¯Êı±»µ÷ÓÃÊ±£¬libeventÒÑ¾­°ïÎÒÃÇacceptÁËÕâ¸ö¿Í»§¶Ë¡£¸Ã¿Í»§¶ËµÄÎÄ¼şÃèÊö·ûÎªfd    
+//ä¸€ä¸ªæ–°å®¢æˆ·ç«¯è¿æ¥ä¸ŠæœåŠ¡å™¨äº†    
+//å½“æ­¤å‡½æ•°è¢«è°ƒç”¨æ—¶ï¼Œlibeventå·²ç»å¸®æˆ‘ä»¬acceptäº†è¿™ä¸ªå®¢æˆ·ç«¯ã€‚è¯¥å®¢æˆ·ç«¯çš„æ–‡ä»¶æè¿°ç¬¦ä¸ºfd    
 void listener_cb(evconnlistener *listener, evutil_socket_t fd,    
                  struct sockaddr *sock, int socklen, void *arg)    
 {    
@@ -58,7 +60,7 @@ void listener_cb(evconnlistener *listener, evutil_socket_t fd,
 	
     printf("accept a client %d\n", fd);    
     event_base *base = (event_base*)arg;    
-    //ÎªÕâ¸ö¿Í»§¶Ë·ÖÅäÒ»¸öbufferevent    
+    //ä¸ºè¿™ä¸ªå®¢æˆ·ç«¯åˆ†é…ä¸€ä¸ªbufferevent    
     bufferevent *bev =  bufferevent_socket_new(base, fd,BEV_OPT_CLOSE_ON_FREE);    
     
     bufferevent_setcb(bev, socket_read_cb, NULL, socket_event_cb, NULL);    
@@ -68,7 +70,7 @@ void listener_cb(evconnlistener *listener, evutil_socket_t fd,
 
 int main()    
 {    
-	evthread_use_pthreads();//enable threads      ĞèÒª -levent_pthreads
+	evthread_use_pthreads();//enable threads      éœ€è¦ -levent_pthreads
     
     struct sockaddr_in sin;    
     memset(&sin, 0, sizeof(struct sockaddr_in));    
@@ -76,8 +78,8 @@ int main()
     sin.sin_port = htons(9999);    
     
 	/*
-		·şÎñ¶Ë Ê¹ÓÃ evconnlistener_new_bind Íê³É ´´½¨socket °ó¶¨ÖÆ¶¨µØÖ·  ¼àÌı  ²¢ÇÒÔÚÁ¬½ÓÇëÇóÊ±Íê³Éaccept 
-		¿Í»§¶Ë Ê¹ÓÃ bufferevent_socket_connect Íê³É ´´½¨socket °ó¶¨µØÖ· Á¬½Ó·şÎñÆ÷ 
+		æœåŠ¡ç«¯ ä½¿ç”¨ evconnlistener_new_bind å®Œæˆ åˆ›å»ºsocket ç»‘å®šåˆ¶å®šåœ°å€  ç›‘å¬  å¹¶ä¸”åœ¨è¿æ¥è¯·æ±‚æ—¶å®Œæˆaccept 
+		å®¢æˆ·ç«¯ ä½¿ç”¨ bufferevent_socket_connect å®Œæˆ åˆ›å»ºsocket ç»‘å®šåœ°å€ è¿æ¥æœåŠ¡å™¨ 
 	*/
     event_base *base = event_base_new();    
     evconnlistener *listener    
