@@ -125,7 +125,7 @@ int main(int argc, char** argv)
     event_add(ev_cmd, NULL);  
   
     //当socket关闭时会用到回调参数  
-    bufferevent_setcb(bev, server_msg_cb, NULL/*回调参数*/, event_cb, (void*)ev_cmd/*回调参数*/);  
+    bufferevent_setcb(bev, server_msg_cb/*读回调*/, NULL/*写回调*/, event_cb/*事件回调*/, (void*)ev_cmd/*回调参数*/);  
     bufferevent_enable(bev, EV_READ | EV_PERSIST); // bufferevent_socket_new 创建时候 与 event_base关联了 
   
   

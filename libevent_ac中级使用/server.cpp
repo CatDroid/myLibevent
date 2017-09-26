@@ -72,7 +72,7 @@ void accept_cb(int fd, short events, void* arg)
   
 	// 取代之前建立 struct event  这里创建 struct bufferevent  并封装了socket  设置了读写的回调函数
     bufferevent* bev = bufferevent_socket_new(base, sockfd, BEV_OPT_CLOSE_ON_FREE);  
-    bufferevent_setcb(bev, socket_read_cb, NULL/*回调函数参数*/, event_cb, arg /*回调函数参数 event_base*/);
+    bufferevent_setcb(bev, socket_read_cb/*读回调*/., NULL/*写回调*/, event_cb/*事件回调*/, arg /*回调函数参数 event_base*/);
     bufferevent_enable(bev, EV_READ | EV_PERSIST);
 	
 }
