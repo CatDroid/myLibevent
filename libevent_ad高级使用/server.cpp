@@ -1,7 +1,7 @@
 
 /*
  
-g++ server.cpp -o server  -levent -L/home/hanlon/Cat6/libevent-2.0.22-stable/install/lib -I/home/hanlon/Cat6/libevent-2.0.22-stable/install/include -Wl,-rpath=/home/hanlon/Cat6/libevent-2.0.22-stable/install/lib 
+g++ server.cpp -o server  -lpthread -levent -levent_pthreads  -L/home/hanlon/Cat6/libevent-2.0.22-stable/install/lib -I/home/hanlon/Cat6/libevent-2.0.22-stable/install/include -Wl,-rpath=/home/hanlon/Cat6/libevent-2.0.22-stable/install/lib 
 
 */
 
@@ -13,12 +13,19 @@ g++ server.cpp -o server  -levent -L/home/hanlon/Cat6/libevent-2.0.22-stable/ins
 #include<stdio.h>    
 #include<string.h>    
  
+#include <pthread.h>
+ 
+ 
 #include<event.h>
 #include<event2/listener.h>
 #include<event2/bufferevent.h>
+
+#include<event2/thread.h>
  
 void socket_event_cb(bufferevent *bev, short events, void *arg)    
 {    
+
+	printf("socket_event_cb tid = %lu \n",  pthread_self() );
     if (events & BEV_EVENT_EOF)    
         printf("connection closed\n");    
     else if (events & BEV_EVENT_ERROR)    
@@ -30,6 +37,7 @@ void socket_event_cb(bufferevent *bev, short events, void *arg)
 
 void socket_read_cb(bufferevent *bev, void *arg){
 	
+	printf("socket_read_cb tid = %lu \n",  pthread_self() );
     char msg[4096];
     size_t len = bufferevent_read(bev, msg, sizeof(msg)-1 );	//	bufferevent_read 读
     msg[len] = '\0';
@@ -46,6 +54,8 @@ void socket_read_cb(bufferevent *bev, void *arg){
 void listener_cb(evconnlistener *listener, evutil_socket_t fd,    
                  struct sockaddr *sock, int socklen, void *arg)    
 {    
+	printf("listener_cb tid = %lu \n",  pthread_self() );
+	
     printf("accept a client %d\n", fd);    
     event_base *base = (event_base*)arg;    
     //为这个客户端分配一个bufferevent    
@@ -58,7 +68,7 @@ void listener_cb(evconnlistener *listener, evutil_socket_t fd,
 
 int main()    
 {    
-    //evthread_use_pthreads();//enable threads    
+	evthread_use_pthreads();//enable threads      需要 -levent_pthreads
     
     struct sockaddr_in sin;    
     memset(&sin, 0, sizeof(struct sockaddr_in));    
