@@ -25,8 +25,24 @@ g++ client.cpp -o client -levent  -L/home/hanlon/Cat6/libevent-2.0.22-stable/ins
 #include<event2/util.h>  
   
   
-void cmd_msg_cb(int fd, short events, void* arg){
+static void timeout_cb(evutil_socket_t fd, short event, void *arg)
+{
+	// fd = -1 event = 0x1  // #define EV_TIMEOUT	0x01  
+	printf("timeout fd = %d event = 0x%x \n" , fd ,event );
+	free(arg);
+}
 	
+  
+void cmd_msg_cb(int fd, short events/*事件的类型*/, void* arg){
+	
+
+	printf("Got an event on socket %d:%s%s%s%s\n",
+		(int) fd,
+		(events&EV_TIMEOUT) ? " timeout" : "",
+		(events&EV_READ)    ? " read" : "",
+		(events&EV_WRITE)   ? " write" : "",
+		(events&EV_SIGNAL)  ? " signal" : "" );
+			
     char msg[1024];
 
     int ret = read(fd, msg, sizeof(msg));
@@ -38,6 +54,16 @@ void cmd_msg_cb(int fd, short events, void* arg){
     struct bufferevent* bev = (struct bufferevent*)arg;
     //把终端的消息发送给服务器端
     bufferevent_write(bev, msg, ret);
+	
+	
+	// 添加定时时间 
+	struct event_base * base = bufferevent_get_base(bev); 
+	struct event* timeout = (struct event*)malloc(sizeof(struct event) );
+	event_assign(timeout, base, -1, 0 /*EV_PERSIST*/, timeout_cb, (void*)timeout);
+	struct timeval tv;
+    evutil_timerclear(&tv);
+    tv.tv_sec = 2;
+    event_add(timeout, &tv);
 }
 
 
@@ -79,9 +105,30 @@ int main(int argc, char** argv){
     struct event_base *base = event_base_new();
     struct bufferevent* bev = bufferevent_socket_new(base, -1,   BEV_OPT_CLOSE_ON_FREE);
 
-    //监听终端输入事件
+	// #define EV_TIMEOUT 0x01 		/*定时事件*/
+	// #define EV_READ 0x02 		/*I/O事件*/
+	// #define EV_WRITE 0x04 		/*I/O事件*/
+	// #define EV_SIGNAL 0x08 		/*信号*/
+	// #define EV_PERSIST 0x10 		/*永久事件 */
+	// #define EV_ET 0x20 			/*边沿触发*/
+
+    //	监听终端输入事件
     struct event* ev_cmd = event_new(base, STDIN_FILENO,  EV_READ | EV_PERSIST,  cmd_msg_cb, (void*)bev);
-    event_add(ev_cmd, NULL);
+   
+	//	给事件重新赋值 
+	//int event_assign(struct event *event, 
+	//					struct event_base *base,
+	//					evutil_socket_t fd, 
+	//					short what,
+	//					void (*callback)(evutil_socket_t, short, void *), 
+	//					void *arg);
+
+	//	虽然已经初始化了事件，但是该事件并不会被触发，原因在于我们并没有激活该事件
+	//	激活事件的功能 / 注册事件 
+	// 	int event_add(struct event *ev, const struct timeval *tv);
+	//	如果是一个（non-pending）未注册`ev`，调用`event_add`函数会注册该事件（变为pending状态）
+	//	如果是一个（pending）注册过的`ev`，调用该函数会在tv时间后重新注册该事件。
+	event_add(ev_cmd, NULL);
 
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr) );
@@ -95,11 +142,36 @@ int main(int argc, char** argv){
     bufferevent_setcb(bev, server_msg_cb, NULL, event_cb, (void*)ev_cmd);
     bufferevent_enable(bev, EV_READ | EV_PERSIST);
 
+	// 循环监听
+	// 当已经拥有注册了IO复用方法的`event_base`后，可以通过`event_loop`来监听并接受IO事件
+	// #define EVLOOP_ONCE	0x01	  等待一个就绪的事件
+	// #define EVLOOP_NONBLOCK	0x02  不阻塞 没有就绪事件就退出 有就执行最高优先级的那些 
+	// int event_base_loop(struct event_base *, int); 
+	// event_base_dispatch(base) -> event_base_loop(base,0)
     event_base_dispatch(base);
 
     printf("finished \n");
     return 0;  
-}  
+} 
+
+/*
+	设置事件执行一次 (也就是在loop上回调指定的函数一次) 见 event_base_loopexit 的实现 
+	int event_base_once(struct event_base *, 
+						evutil_socket_t,
+						short,
+						void (*)(evutil_socket_t, short, void *), void *, 
+						const struct timeval *);
+	
+	如果想自己激活某个事件，那么可以执行下面的函数
+	void event_active(struct event *ev, int what, short ncalls);
+	* what可以为EV_READ, EV_WRITE, and EV_TIMEOUT
+	* ncalls为激活次数
+	
+	调试：
+	这个函数可以把`event_base`中信息和状态写入文件中
+	void event_base_dump_events(struct event_base *base, FILE *f);
+	
+*/
   
   
   
