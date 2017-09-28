@@ -72,6 +72,30 @@ int main()
 {    
 	evthread_use_pthreads();//enable threads      需要 -levent_pthreads
     
+	// 多个平台的兼容性 定时函数
+	struct timeval tv1, tv2, tv3;
+	tv1.tv_sec = 5; tv1.tv_usec = 500*1000;
+	evutil_gettimeofday(&tv2, NULL);
+	evutil_timeradd(&tv1, &tv2, &tv3); // tv1+tv2=tv3  
+	if (evutil_timercmp(&tv1, &tv1, ==)){
+		printf("evutil_timercmp == \n");
+	}
+	if (evutil_timercmp(&tv3, &tv1, >=)){
+		printf("evutil_timeradd >= \n");
+	}
+	
+	
+	// 系统支持的方法 比如 epoll select poll等 跟编译时有关 
+	const char ** all_methods = event_get_supported_methods();
+	const char ** one_methods = all_methods;
+	while( *one_methods != NULL ){
+		printf("method '%s' support\n", *one_methods);
+		one_methods++;
+	}
+ 
+ 
+
+	
     struct sockaddr_in sin;    
     memset(&sin, 0, sizeof(struct sockaddr_in));    
     sin.sin_family = AF_INET;    
@@ -81,13 +105,30 @@ int main()
 		服务端 使用 evconnlistener_new_bind 完成 创建socket 绑定制定地址  监听  并且在连接请求时完成accept 
 		客户端 使用 bufferevent_socket_connect 完成 创建socket 绑定地址 连接服务器 
 	*/
-    event_base *base = event_base_new();    
+    event_base *base = event_base_new();
+	
+	const char* current_method = event_base_get_method(base);
+	printf("current_method = %s\n", current_method ); 		// epoll 
+	
+	int current_feature = event_base_get_features(base); 
+	printf("current_feature = 0x%x\n", current_feature );	// 0x3  
+	// EV_FEATURE_ET = 0x01  EV_FEATURE_O1 = 0x02  
+	
     evconnlistener *listener    
             = evconnlistener_new_bind(base, listener_cb, base,    
                                       LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE,    
                                       10, (struct sockaddr*)&sin,    
                                       sizeof(struct sockaddr_in));    
     
+	// 在linux上就是errno 
+	// #define evutil_socket_geterror(sock) (errno) 
+	// #define evutil_socket_error_to_string(errcode)  (strerror(errcode))
+	
+	#define RAND_SIZE 3 
+	char buf[RAND_SIZE];
+	evutil_secure_rng_get_bytes( buf, RAND_SIZE);// 3 是 3个字节 
+	printf("rand %u %u %u\n", 0xFF&buf[0], 0xFF&buf[1], 0xFF&buf[2] );
+	
     event_base_dispatch(base);    
     
     evconnlistener_free(listener);    
