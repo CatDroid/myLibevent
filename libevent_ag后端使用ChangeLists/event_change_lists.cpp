@@ -80,7 +80,7 @@ int main(int argc  , char** argv )
 	#if 1 
 		struct event_config * confg = event_config_new();
 		event_config_set_flag(confg , EVENT_BASE_FLAG_EPOLL_USE_CHANGELIST );
-		event_base *base = event_base_new_with_config(confg); // 需要evthread_use_pthreads配合 否则其他线程event_add不会立刻加入epoll_wait 
+		event_base *base = event_base_new_with_config(confg); // 需要evthread_use_pthreads配合 否则其他线程event_add不会立刻调用epoll_ctrl 
 		event_config_free(confg);
 	#else
 		event_base *base = event_base_new();	
