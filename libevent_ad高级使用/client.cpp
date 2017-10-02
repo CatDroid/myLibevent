@@ -64,6 +64,32 @@ void cmd_msg_cb(int fd, short events/*事件的类型*/, void* arg){
     evutil_timerclear(&tv);
     tv.tv_sec = 2;
     event_add(timeout, &tv);
+	/*
+	
+	正常情况下，一般不希望使用队列管理所有的超时时间值，
+	
+	因为队列仅对于恒定的超时时间来说是快速的。
+	(假设有一万个事件，每一个event的超时时间都是在他们被添加之后的5秒钟 O(1) )
+	(大量相同时间的events)
+	
+	
+	如果一些超时时间或多或少的随机分布的话，
+	那添加这些超时时间到队列将会花费O(n)的时间，这样的性能要比二叉堆差多了
+	
+	对于有序的添加和删除event超时时间的操作，二叉堆算法可以提供O(lg n)的性能
+	对于添加随机分布的超时时间来说，性能是最优的 
+	
+	
+	Libevent解决这种问题的方法是将一些超时时间值放置在队列中，其他的则放入二叉堆中
+	
+	可以向Libevent请求一个“公用超时时间”的时间值，然后使用该时间值进行事件的添加
+	如果存在大量的event，它们的超时时间都是这种"单一公用超时时间"的情况，那么使用这种优化的方法可以明显提高超时事件的性能
+	
+	const struct  timeval * event_base_init_common_timeout(  struct event_base *base,  const  struct  timeval* duration);
+	返回的timeval 仅使用它们来指明使用哪个队列 
+	后面的事件 如果超时也是 duration  那么 event_add时候 使用 这里的返回值 
+	
+	*/
 }
 
 
@@ -161,6 +187,11 @@ int main(int argc, char** argv){
 						short,
 						void (*)(evutil_socket_t, short, void *), void *, 
 						const struct timeval *);
+	对一个非持久的event，在add之后就会delete,不用自己delete event 
+	不支持EV_SIGNAL或EV_PERSIST标志
+	不能被删除或者手动激活
+	当event_base释放时，即使events还没有被激活，它们的内存也会被释放(注意形参关联内存要自己释放)
+	
 	
 	如果想自己激活某个事件，那么可以执行下面的函数
 	void event_active(struct event *ev, int what, short ncalls);

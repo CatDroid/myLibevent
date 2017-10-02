@@ -6,7 +6,7 @@ export LIBRARY_PATH=$LIBRARY_PATH:/media/sf_E_DRIVE/EclipseSource/libevent-2.1.8
 export C_INCLUDE_PATH=$C_INCLUDE_PATH:/media/sf_E_DRIVE/EclipseSource/libevent-2.1.8-stable/install/include
 export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:/media/sf_E_DRIVE/EclipseSource/libevent-2.1.8-stable/install/include
 
-clang++ event_add_moreAndMoe.cpp -o event_add_moreAndMoe -levent -levent_pthreads
+clang++ event_add_moreAndMore.cpp -o event_add_moreAndMore -levent -levent_pthreads
 
 */
 
@@ -34,6 +34,19 @@ void cmd_msg_cb1(int fd, short events, void* arg)  {
         exit(1);				 
     }
 	msg[ret] = '\0' ;	
+	
+	//*((int*)0x0) = 20;
+	/*
+	 调用流程:
+		#0  0x0000000000400b4a in cmd_msg_cb1(int, short, void*) ()
+		#1  0x00007f708061e539 in event_persist_closure (ev=<optimized out>, base=0x151c0e0) at event.c:1580
+		#2  event_process_active_single_queue (base=base@entry=0x151c0e0, activeq=0x151c700, 
+			max_to_process=max_to_process@entry=2147483647, endtime=endtime@entry=0x0) at event.c:1639
+		#3  0x00007f708061edef in event_process_active (base=0x151c0e0) at event.c:1738
+		#4  event_base_loop (base=0x151c0e0, flags=0) at event.c:1961
+		#5  0x0000000000400dd5 in main ()
+	*/
+	
 	
 	// 也就是跟这个回调函数相关的event 
 	// 找到当前正在运行的event
@@ -97,6 +110,14 @@ int main(int argc  , char** argv )
     evutil_timerclear(&tv);
     tv.tv_usec = 1000 ;		// 1ms 
     event_add(ev_cmd,&tv); // 如果 EV_PERSIST  超时会不断调用 
+	// 优先级:
+	// int event_priority_set(struct event *event, int priority); 
+	//  event的优先级数必须是位于0到event_base优先级-1这个区间内
+	//	当具有多种优先级的多个events同时激活的时候，低优先级的events不会运行。
+	//	Libevent会只运行高优先级的events，然后重新检查events。
+	//	只有当没有高优先级的events激活时，才会运行低优先级的events
+	//	如果没有设置一个event的优先级，则它的默认优先级是“event_base队列长度”除以2
+	
 	
 	/*
 	
