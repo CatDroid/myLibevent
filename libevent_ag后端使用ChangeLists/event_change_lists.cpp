@@ -32,6 +32,7 @@ static void write_cb(evutil_socket_t fd, short event, void *arg){
 	printf("write_cb fd = %d event = 0x%x free \n" , fd , event );
 	event_del ( (struct event*)arg);
 	event_free( (struct event*)arg);
+	printf("write_cb EXIT\n");
 }
 
 
@@ -41,13 +42,24 @@ static void* async_thread(void* arg ){
 	sleep(3);
 	printf("async_thread sleep done  \n");
 	
+	// 内部时间缓存 通过 event_base的flag EVENT_BASE_FLAG_NO_CACHE_TIME 关闭 
+	// 每次 dispatch 返回的时候 会先 更新 缓冲事件 然后 再调用每个事件的回调函数 
+	// event_base.tv_cache 会保留缓冲时间 避免过多系统调用 clock_gettime gettimeofday 
+	// event_base.event_tv 记录 上一次dispath_loop返回而且在所有事件回调函数前 的时间 
+	// 外部只能获取 
+	// 如果回调函数耗时比较长 这个没有什么意思了~~
+	struct timeval tv_out ; 
+	event_base_gettimeofday_cached((event_base *)arg ,  &tv_out);
+	printf("gettimeofday %ld %ld\n", tv_out.tv_sec , tv_out.tv_usec );
+	
+	
 	
 	event_base *base = (event_base *)arg ;	
 	struct event* ready_in =  event_new(base, -1, 0, NULL, NULL );
 	event_assign(ready_in, base, STDOUT_FILENO ,  EV_WRITE /*只执行一次*/ , write_cb, (void*)ready_in); 
     event_add(ready_in,NULL); // 异步线程  添加事件  会由 eventfd 唤醒 epoll_dispatch 
 	
-	
+
 	
 	printf("add Write Event Done !\n");
 	return NULL;
