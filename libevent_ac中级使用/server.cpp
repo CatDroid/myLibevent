@@ -128,8 +128,11 @@ error:
 			调用了exec()，应该关闭指定的套接字
 			在Unix中函数设置FD_CLOEXEC标志(fcntl) 在Windows上则没有操作 
 		int evutil_socketpair(int family, int type, int protocol, evutil_socket_t sv[2]);
-		这个函数的行为跟Unix的socketpair()调用相同：创建两个相互连接起来的套接字，可对其使用普通套接字IO调用。函数将两个套接字存储在sv[0]和sv[1]中，成功时返回0，失败时返回-1。 
-在Windows中，这个函数仅能支持AF_INET协议族、SOCK_STREAM类型和0协议的套接字。注意：在防火墙软件明确阻止127.0.0.1，禁止主机与自身通话的情况下，函数可能失败。
+			这个函数的行为跟Unix的socketpair()调用相同：创建两个相互连接起来的套接字，可对其使用普通套接字IO调用。
+			函数将两个套接字存储在sv[0]和sv[1]中，成功时返回0，失败时返回-1。 
+			
+			在Windows中，这个函数仅能支持AF_INET协议族、SOCK_STREAM类型和0协议的套接字。
+			注意：在防火墙软件明确阻止127.0.0.1，禁止主机与自身通话的情况下，函数可能失败。
 
 	*/
 	errno = errno_save;

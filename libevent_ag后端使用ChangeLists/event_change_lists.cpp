@@ -29,6 +29,16 @@ pthread_t thisThread;
 
 
 static void write_cb(evutil_socket_t fd, short event, void *arg){
+	/*
+		int	event_pending(const struct event *ev, short event, struct timeval *tv)
+		event_pending	函数检查给定的event 是否处于“挂起”或“激活”状态 返回对应的event 
+						如果有TIMEOUT事件挂起 tv将会被赋值 
+		event 只能是 EV_TIMEOUT|EV_READ|EV_WRITE|EV_SIGNAL
+	*/
+	int pending_or_active = event_pending((struct event*)arg , EV_WRITE , NULL );
+	//int priority		  =	event_get_priority((struct event*)arg); //	已经没有event_get_priority
+	printf("pending or activie ? %d \n" , pending_or_active ); // 0
+	
 	printf("write_cb fd = %d event = 0x%x free \n" , fd , event );
 	event_del ( (struct event*)arg);
 	event_free( (struct event*)arg);
@@ -84,9 +94,20 @@ void cmd_msg_cb(int fd, short events, void* arg)  {
 				0x6192c0 [fd 6] Read Persist
 				0x619ae0 [fd 0] Read Persist
 			*/
-		FILE* fp = fopen("event_base.txt","wb");
-		event_base_dump_events((struct event_base*)arg,fp);
-		fclose(fp);
+		//FILE* fp = fopen("event_base.txt","wb");
+		//event_base_dump_events((struct event_base*)arg,fp);
+		//fclose(fp);
+		
+		/*
+			如果event设置了EV_PERSIST标志 
+			但 希望在回调函数中将event变为“非挂起”状态，则可以调用event_del函数
+			
+			如果某个event标志为EV_READ|EV_PERSIST，并且将超时时间设置为5秒，
+			则该event在下面的条件发生时，会变为“激活”：
+			1.当该socket准备好读时； 
+			2.距离上次event变为激活状态后，又过了5秒钟. (类似看门狗的功能)
+			
+		*/
 
 	}
 	printf("cmd_msg_cb Exit ! \n");	
@@ -113,7 +134,12 @@ int main(int argc  , char** argv )
 	const char* method = event_base_get_method(base);
 	printf("current method = %s\n" , method );
 	
-	
+	/* !!
+	自Libevent2.0.1-alpha版本以来，
+	同一时刻，针对同一个文件描述符，可以有任意数量的event在同样的条件上“挂起”。
+	比如，当给定的fd变为可读时，可以使两个events都变为激活状态。
+	但是他们的回调函数的调用顺序是未定义的
+	*/
     struct event* ev_cmd = event_new(	base, 
 										STDIN_FILENO,  
 										EV_READ | EV_PERSIST,  // EV_TIMEOUT 是不需要 加入的 只需要event_add的时候 加上超时
@@ -121,6 +147,11 @@ int main(int argc  , char** argv )
 										base );  
 
 	event_add(ev_cmd, NULL); 
+	
+	int pending_or_active = event_pending(ev_cmd , EV_WRITE , NULL );
+	printf("ev_cmd EV_WRITE pending or activie ? %d \n" , pending_or_active );  // 0  
+	pending_or_active = event_pending(ev_cmd , EV_READ , NULL ); 
+	printf("ev_cmd EV_READ  pending or activie ? %d \n" , pending_or_active );  // 2  
 	
 	/*
 		lrwx------ 1 hhl hhl 64 9月  30 17:20 3 -> anon_inode:[eventpoll]	<<= 创建的eventpoll 

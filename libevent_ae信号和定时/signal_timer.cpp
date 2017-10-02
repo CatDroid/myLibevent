@@ -77,6 +77,19 @@ int main()
     tv.tv_sec = 2;
     event_add(timeout,&tv);
 	
+	/*
+	　	注意：
+			1.信号回调函数是在信号发生之后，在eventloop中调用的。
+				所以，它们可以调用那些，对于普通POSIX信号处理函数来说不是信号安全的函数
+				
+　　		2.不要在一个信号event上设置超时，不支持这样做。
+
+			3. 当前版本的Libevent，
+				对于大多数的后端方法来说，同一时间，每个进程仅能有一个event_base可以用来监听信号。
+				如果一次向两个event_base添加event，即使是不同的信号，(!!!)
+				也仅仅会只有一个event_base可以接收到信号。
+				对于kqueue来说，不存在这样的限制。
+	*/
 	// 	添加信号事件 
 	struct event* signal_int = event_new(base, -1, 0, NULL, NULL); 	 
 	//	event_set(signal_int, SIGINT, EV_SIGNAL|EV_PERSIST, signal_cb, signal_int); 

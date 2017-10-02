@@ -34,6 +34,13 @@ void cmd_msg_cb(int fd, short events, void* arg)
 	}
 	struct bufferevent* bev = (struct bufferevent*)arg;
 	bufferevent_write(bev, msg, ret); // 使用了bufferevent 代替直接写到socket 
+	printf("first event on STDIN_FILENO  EV_READ \n");
+}
+
+void cmd_msg_cb1(int fd, short events, void* arg)
+{
+	char msg[1024];
+	printf("second event on STDIN_FILENO  EV_READ \n");
 }
 
 
@@ -123,6 +130,10 @@ int main(int argc, char** argv)
     //监听终端输入事件  
     struct event* ev_cmd = event_new(base, STDIN_FILENO,EV_READ | EV_PERSIST, cmd_msg_cb,(void*)bev);  
     event_add(ev_cmd, NULL);  
+	
+	// 同个fd 在不同的event 上 同样的事件  : 两个都会被回调 但是顺序不确定
+	 struct event* ev_cmd1 = event_new(base, STDIN_FILENO,EV_READ | EV_PERSIST, cmd_msg_cb1,(void*)bev);  
+    event_add(ev_cmd1, NULL);  
   
     //当socket关闭时会用到回调参数  
     bufferevent_setcb(bev, server_msg_cb/*读回调*/, NULL/*写回调*/, event_cb/*事件回调*/, (void*)ev_cmd/*回调参数*/);  
