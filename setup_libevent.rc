@@ -1,4 +1,4 @@
-export LD_LIBRARY_PATH=/home/hanlon/Cat6/libevent-2.0.22-stable/install/lib
-export LIBRARY_PATH=/home/hanlon/Cat6/libevent-2.0.22-stable/install/lib
-export C_INCLUDE_PATH=/home/hanlon/Cat6/libevent-2.0.22-stable/install/include
-export CPLUS_INCLUDE_PATH=/home/hanlon/Cat6/libevent-2.0.22-stable/install/include
+export LD_LIBRARY_PATH=/home/hanlon/Cat6/libevent-2.1.8-stable/install/lib
+export LIBRARY_PATH=/home/hanlon/Cat6/libevent-2.1.8-stable/install/lib
+export C_INCLUDE_PATH=/home/hanlon/Cat6/libevent-2.1.8-stable/install/include
+export CPLUS_INCLUDE_PATH=/home/hanlon/Cat6/libevent-2.1.8-stable/install/include

@@ -6,7 +6,7 @@ export LIBRARY_PATH=$LIBRARY_PATH:/media/sf_E_DRIVE/EclipseSource/libevent-2.1.8
 export C_INCLUDE_PATH=$C_INCLUDE_PATH:/media/sf_E_DRIVE/EclipseSource/libevent-2.1.8-stable/install/include
 export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:/media/sf_E_DRIVE/EclipseSource/libevent-2.1.8-stable/install/include
 
-clang++ event_add_moreAndMoe.cpp -o event_add_moreAndMoe -levent
+clang++ event_add_moreAndMoe.cpp -o event_add_moreAndMoe -levent -levent_pthreads
 
 */
 
@@ -34,6 +34,13 @@ void cmd_msg_cb1(int fd, short events, void* arg)  {
         exit(1);				 
     }
 	msg[ret] = '\0' ;	
+	
+	// 也就是跟这个回调函数相关的event 
+	// 找到当前正在运行的event
+	// 在其他线程调用时不支持的，而且会导致未定义的行为
+	struct event * current = event_base_get_running_event( (struct event_base*)arg );// 2.1.8  2.0还没有这个接口 
+	printf("cmd_msg_cb1 event_pending 0x%x \n" , event_pending(current ,EV_READ|EV_WRITE , NULL) ); // 0x1
+	
 	printf("cmd_msg_cb1 = %s\n" , msg );
 }
 
@@ -56,7 +63,7 @@ void cmd_msg_cb(int fd, short events, void* arg)  {
 	if(events & EV_TIMEOUT){
 	    event_base *base =  (event_base *) arg ;
 		struct event* ev_cmd = event_new(base, 
-										STDIN_FILENO,  
+										STDIN_FILENO,  // 同一个fd 不断地添加
 										EV_READ | EV_PERSIST, 
 										cmd_msg_cb1,  
 										base );  
@@ -91,6 +98,16 @@ int main(int argc  , char** argv )
     tv.tv_usec = 1000 ;		// 1ms 
     event_add(ev_cmd,&tv); // 如果 EV_PERSIST  超时会不断调用 
 	
+	/*
+	
+		在“非挂起”状态的events上执行event_add操作，则会使得该event在配置的event_base上变为“挂起”状态。
+			该函数返回0表示成功，返回-1表示失败。  
+　　	
+		(修改超时事件!!!)
+		如果在已经是“挂起”状态的event进行event_add操作，则会保持其“挂起”状态，并且会重置其超时时间。
+		如果event已经是“挂起”状态，而且以NULL为超时时间对其进行re-add操作，则event_add没有任何作用。 
+		
+	*/
 	
     event_base_dispatch(base); 
     event_base_free(base);
