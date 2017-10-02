@@ -53,6 +53,15 @@ void socket_read_cb(bufferevent *bev, void *arg){
 
     char reply[] = "I has read your data";
     bufferevent_write(bev, reply, strlen(reply) );				//	bufferevent_write 写
+
+
+    //	获取 bufferevent对象 对应的 输入输出evbuffer 
+    //	struct evbuffer *input = bufferevent_get_input(bev);
+    //	struct evbuffer *output = bufferevent_get_output(bev);
+
+    // 	从input buffer拷贝数据到output buffer 
+    //	evbuffer_add_buffer(output, input);	
+	
 }
 
 
@@ -78,7 +87,7 @@ void listener_cb(evconnlistener *listener, evutil_socket_t fd,
 	//	设置读写回调函数
     bufferevent_setcb(bev, socket_read_cb, NULL, socket_event_cb, NULL);
 
-	// 启用事件
+	//	启用事件
     bufferevent_enable(bev, EV_READ | EV_PERSIST ); 
 	
 	// 	线程安全
