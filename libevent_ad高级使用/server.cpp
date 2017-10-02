@@ -208,8 +208,8 @@ int main()
 	evutil_secure_rng_get_bytes( buf, RAND_SIZE);// 3 是 3个字节 
 	printf("rand %u %u %u\n", 0xFF&buf[0], 0xFF&buf[1], 0xFF&buf[2] );
 	
-	// 结构体偏移(可移植性函数):从type类型开始处到field字段的字节数
-	// evutil_offsetof
+	// 结构体偏移(可移植性函数):从type类型开始处到field字段的字节数 标准 offsetof 宏
+	// evutil_offsetof		
 	//int offset = evutil_offsetof(struct event_base , tv_cache );
 	// struct event_base 是内部结构体 外部不能范围内部
 	
@@ -221,12 +221,100 @@ int main()
 	int64_t test1 = 12 ;
 	printf("int64_t = %" PRId64  "\n", test1 );
 	
-	//	类型兼容性
-	// 	ssize_t	有符号的size_t				ev_ssize_t 	EV_SSIZE_MAX
-	//	off_t	文件或者内存块中的偏移量	ev_off_t						 
-	//	socklen_t 							ev_socklen_t
-	//	int*	足够容纳指针类型而不会截断	ev_intptr_t
-	//	int/指针 套接字socket				evutil_socket_t
+	/*
+		类型兼容性
+	  	ssize_t	有符号的size_t				ev_ssize_t 	EV_SSIZE_MAX
+	 	off_t	文件或者内存块中的偏移量	ev_off_t						 
+	 	socklen_t 							ev_socklen_t
+	  	int*	足够容纳指针类型而不会截断	ev_intptr_t
+	 	int/指针 套接字socket				evutil_socket_t
+	*/
+	
+	/*
+		const char *evutil_inet_ntop(int af, const void *src, char *dst, size_t len);
+		int evutil_inet_pton(int af, const char *src, void *dst);
+			与标准inet_ntop()和inet_pton()函数行为相同
+		
+		int evutil_parse_sockaddr_port(const char *str, struct sockaddr *out, int *outlen);
+			解析来自字符串地址描述str，将结果写入到 struct sockaddr out中 
+			outlen参数应该指向一个表示out中可用字节数的整数；函数返回时这个整数将表示实际使用了的字节数
+			如果没有给出端口号，结果中的端口号将被设置为0
+			函数识别下列地址格式
+			[ipv6]:端口号（如[ffff::]:80）
+			ipv6（如ffff::）
+			[ipv6]（如[ffff::]）
+			ipv4:端口号（如1.2.3.4:80）
+			ipv4（如1.2.3.4）
+		
+		IPv4:
+			struct sockaddr {
+				unsigned short sa_family;  	地址族, AF_xxx  
+				char sa_data[14];   		14字节的协议地址 (IPv6已经超过!)
+			};
+			struct sockaddr_in {
+				short int sin_family;   	地址族  
+				unsigned short int sin_port;端口号  2个字节
+				struct in_addr sin_addr;    Internet地址   32bit 4个字节长度 
+				unsigned char sin_zero[8];	与struct sockaddr一样的长度  
+			};
+		
+		IPv6
+			2000:0:0:0:0:0:0:1 		2*8 = 16个字节
+			
+			struct sockaddr_in6 {
+			   sa_family_t     sin6_family;		AF_INET6  
+			   in_port_t       sin6_port;     	端口号
+			   uint32_t        sin6_flowinfo;   IPv6 flow information  
+			   struct in6_addr sin6_addr;       IPv6 address  
+			   uint32_t        sin6_scope_id;  	Scope ID (new in 2.4)  
+			};
+
+			struct in6_addr {
+			   unsigned char   s6_addr[16];     IPv6 address 
+			};
+			
+			
+			tcp6_socket = socket(AF_INET6, SOCK_STREAM, 0);
+			raw6_socket = socket(AF_INET6, SOCK_RAW, protocol);
+			udp6_socket = socket(AF_INET6, SOCK_DGRAM, protocol);
+	*/
+	
+	struct sockaddr_in addr ;
+	int out_len = sizeof(struct sockaddr_in ) ; 
+	int actlen = evutil_parse_sockaddr_port("192.168.1.124:80" , (struct sockaddr*)&addr , &out_len );
+	printf("parse: addr = %s port = %d actlen = %d out_len = %d\n" , 
+			inet_ntoa(addr.sin_addr), ntohs(addr.sin_port),
+			actlen, out_len );
+	
+	/*
+	地址转换函数:
+	
+		inet_aton  inet_addr 只支持IPv4
+	
+		int       inet_aton (const char *cp, struct in_addr *inp); 	// sockaddr_in.sin_addr
+		in_addr_t inet_addr	(const char *cp);						// sockaddr_in.sin_addr.s_addr
+		
+		char 	   *inet_ntoa(struct in_addr in);
+		
+		支持IPv4 IPv6的
+		int inet_pton(int family, const char *src, void *dst);
+		如果函数出错将返回一个负值，并将errno设置为EAFNOSUPPORT
+		如果参数af指定的地址族和src格式不对，函数将返回0 	
+
+		const char *inet_ntop(int family, const void *src, char *dst, socklen_t cnt); 网络二进制结构到ASCII类型的地址
+		socklen_t cnt 	所指向缓存区dst的大小 避免溢出 
+						如果缓存区太小无法存储地址的值 则返回一个空指针 并将errno置为ENOSPC
+	*/
+	struct sockaddr_in6 addr6 ;
+	out_len = sizeof(struct sockaddr_in6 ) ; 
+	actlen = evutil_parse_sockaddr_port("[2000:0:0:0:0:0:0:1]:80" , (struct sockaddr*)&addr6 , &out_len );
+	char straddr[INET6_ADDRSTRLEN];
+	inet_ntop(AF_INET6, &addr6.sin6_addr, straddr,  sizeof(straddr));
+	printf("parse: addr = %s port = %d actlen = %d out_len = %d\n" ,
+			straddr , ntohs(addr6.sin6_port), 
+			actlen, out_len );
+	// parse: addr = 192.168.1.124 port = 80 actlen = 0 out_len = 16
+	// parse: addr = 2000::1 port = 80 actlen = 0 out_len = 28
 	
     event_base_dispatch(base);    
     
