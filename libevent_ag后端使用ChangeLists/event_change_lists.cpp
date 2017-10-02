@@ -48,6 +48,7 @@ static void* async_thread(void* arg ){
     event_add(ready_in,NULL); // 异步线程  添加事件  会由 eventfd 唤醒 epoll_dispatch 
 	
 	
+	
 	printf("add Write Event Done !\n");
 	return NULL;
 }
@@ -65,6 +66,16 @@ void cmd_msg_cb(int fd, short events, void* arg)  {
 		msg[ret] = '\0' ;	
 		printf("cmd_msg_cb = %s\n" , msg );	
 		pthread_create(&thisThread,  NULL,  async_thread,  arg);
+		/*
+			转储event_base状态 
+			Inserted events:
+				0x6192c0 [fd 6] Read Persist
+				0x619ae0 [fd 0] Read Persist
+			*/
+		FILE* fp = fopen("event_base.txt","wb");
+		event_base_dump_events((struct event_base*)arg,fp);
+		fclose(fp);
+
 	}
 	printf("cmd_msg_cb Exit ! \n");	
 	return ;
