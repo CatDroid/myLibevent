@@ -96,6 +96,19 @@ static void accept_error_cb(struct evconnlistener *listener, void *ctx)
     int err = EVUTIL_SOCKET_ERROR(); // 需要 #include<errno.h>
     fprintf(stderr, "Got an error %d (%s) on the listener. ""Shutting down.\n", err, evutil_socket_error_to_string(err));
     event_base_loopexit(base, NULL);
+	
+	/*
+	区别:
+	
+	实现上两者不一样 导致了作用效果不一样
+	
+	loopexit	event_base 当前所有激活的事件回调完之后
+							当前没有loop的话 在下一次进入Loop的时候 会立刻退出 
+							支持时间
+	loopbreak	event_base 当前激活的事件的回调函数返回之后 就立即退出 event_base->event_break=1 (每次event_base_loop的时候都会清除)
+							当前没有loop的话 没有作用 ; 之后再进入loop的时候 会清除这个标记
+	
+	*/
 }
 
 
@@ -189,6 +202,15 @@ int main()
 	
     event_base_dispatch(base);    
     
+	// 检查退出的原因: event_base->event_gotterm  event_base->event_break(再下一次loop的时候重置)
+	if( event_base_got_exit(base) ){
+		printf("exit event_base \n");
+	}
+	if( event_base_got_break(base) ){
+		printf("break event_base \n");
+	}
+  
+
     evconnlistener_free(listener);   // 会释放 监听socket 
     event_base_free(base);    
     
