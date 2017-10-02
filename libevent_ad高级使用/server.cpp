@@ -120,16 +120,17 @@ int main()
 {    
 	evthread_use_pthreads();//enable threads      需要 -levent_pthreads
     
-	// 多个平台的兼容性 定时函数
+	// 定时器函数 兼容性
+	// 标准timeval操作函数
 	struct timeval tv1, tv2, tv3;
 	tv1.tv_sec = 5; tv1.tv_usec = 500*1000;
 	evutil_gettimeofday(&tv2, NULL);
-	evutil_timeradd(&tv1, &tv2, &tv3); // tv1+tv2=tv3  
+	evutil_timeradd(&tv1, &tv2, &tv3); 		//	时间加减预算 tv1+tv2=tv3  
 	if (evutil_timercmp(&tv1, &tv1, ==)){
 		printf("evutil_timercmp == \n");
 	}
-	if (evutil_timercmp(&tv3, &tv1, >=)){
-		printf("evutil_timeradd >= \n");
+	if (evutil_timercmp(&tv3, &tv1, >=)){	//	时间比较
+		printf("evutil_timeradd >= \n");	
 	}
 	
 	
@@ -219,6 +220,13 @@ int main()
 	printf("cv_uint64_t = %" PRId64  "\n", test );
 	int64_t test1 = 12 ;
 	printf("int64_t = %" PRId64  "\n", test1 );
+	
+	//	类型兼容性
+	// 	ssize_t	有符号的size_t				ev_ssize_t 	EV_SSIZE_MAX
+	//	off_t	文件或者内存块中的偏移量	ev_off_t						 
+	//	socklen_t 							ev_socklen_t
+	//	int*	足够容纳指针类型而不会截断	ev_intptr_t
+	//	int/指针 套接字socket				evutil_socket_t
 	
     event_base_dispatch(base);    
     
