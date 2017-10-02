@@ -195,10 +195,18 @@ int main()
 	// #define evutil_socket_geterror(sock) (errno) 
 	// #define evutil_socket_error_to_string(errcode)  (strerror(errcode))
 	
+	//	种子则来自操作系统的熵池 entropy pool linux中是/dev/urandom
+	//	evutil_secure_rng_init 不需要手动初始化安全随机数发生器，但是如果要确认已经成功初始化
+	//							函数返回-1则表示libevent无法在操作系统中找到合适的熵源（source of entropy）
 	#define RAND_SIZE 3 
 	char buf[RAND_SIZE];
 	evutil_secure_rng_get_bytes( buf, RAND_SIZE);// 3 是 3个字节 
 	printf("rand %u %u %u\n", 0xFF&buf[0], 0xFF&buf[1], 0xFF&buf[2] );
+	
+	// 结构体偏移(可移植性函数):从type类型开始处到field字段的字节数
+	// evutil_offsetof
+	//int offset = evutil_offsetof(struct event_base , tv_cache );
+	// struct event_base 是内部结构体 外部不能范围内部
 	
     event_base_dispatch(base);    
     
