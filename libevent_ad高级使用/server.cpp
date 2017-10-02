@@ -12,9 +12,11 @@ g++ server.cpp -o server  -lpthread -levent -levent_pthreads  -L/home/hanlon/Cat
     
 #include<stdio.h>    
 #include<string.h>    
- 
+
 #include <pthread.h>
  
+#include <stdint.h>		// int64_t
+#include <inttypes.h> 	// PRId64
  
 #include<event.h>
 #include<event2/listener.h>
@@ -112,6 +114,8 @@ static void accept_error_cb(struct evconnlistener *listener, void *ctx)
 }
 
 
+
+
 int main()    
 {    
 	evthread_use_pthreads();//enable threads      需要 -levent_pthreads
@@ -207,6 +211,14 @@ int main()
 	// evutil_offsetof
 	//int offset = evutil_offsetof(struct event_base , tv_cache );
 	// struct event_base 是内部结构体 外部不能范围内部
+	
+	
+	// 落后于21世纪的C系统  常常没有实现C99标准规定的stdint.h头文件
+	// C99 stdint.h int32_t  int64_t  宽度确定（bit-width-specific）的整数类型
+	ev_uint64_t test = 12;
+	printf("cv_uint64_t = %" PRId64  "\n", test );
+	int64_t test1 = 12 ;
+	printf("int64_t = %" PRId64  "\n", test1 );
 	
     event_base_dispatch(base);    
     
