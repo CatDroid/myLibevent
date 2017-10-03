@@ -106,7 +106,7 @@ void read_callback(struct bufferevent *bev, void *ctx)
 		 while ((n = evbuffer_remove(input, buf, sizeof(buf))) > 0) {
 			fwrite(buf, 1, n, stdout);
 		}
-        printf("Drained %lu bytes from %s\n",  (unsigned long) len, inf->name);
+        printf("\nDrained %lu bytes from %s\n",  (unsigned long) len, inf->name);
     }
 }
 
@@ -172,14 +172,14 @@ struct bufferevent * setup_bufferevent(struct event_base*base , const short port
 		   
     /* Trigger the read callback only whenever there is at least 128 bytes
        of data in the buffer. */
-    bufferevent_setwatermark(bev, EV_READ, 36, 0); // 只有读取到36个字节 才会回调!
+    //bufferevent_setwatermark(bev, EV_READ, 36, 0); // 只有读取到36个字节 才会回调!
 
     bufferevent_setcb(bev, read_callback, NULL, event_callback, info1);
     bufferevent_enable(bev, EV_READ);    // 默认情况 没使能写功能
-	bufferevent_disable(bev,EV_WRITE);// 默认情况 使能写功能  所以可以通过evbuffer_add_printf等写数据到fd 
+	//bufferevent_disable(bev,EV_WRITE);// 默认情况 使能写功能  所以可以通过evbuffer_add_printf等写数据到fd 
     
-	const struct timeval timeout = {2,0};
-	bufferevent_set_timeouts(bev ,&timeout, &timeout);
+	//const struct timeval timeout = {2,0};
+	//bufferevent_set_timeouts(bev ,&timeout, &timeout);
 	
 	/*
 		只有在bufferevent读或写的时候，才会对超时时间进行计时。
@@ -201,6 +201,36 @@ struct bufferevent * setup_bufferevent(struct event_base*base , const short port
 		BEV_EVENT_TIMEOUT|BEV_EVENT_WRITING
 		进行调用
 	*/
+	
+	struct timeval tick = {1,0};
+	struct ev_token_bucket_cfg * cfg = ev_token_bucket_cfg_new(
+        20/*平均*/, 30/*一个tick的最大传输数量*/, 
+        20, 30,// 这样会导致  很长的数据  对方会先收到前面的30个字节 再收到后面的数据
+        &tick );
+	if( cfg == NULL) printf("ERROR ev_token_bucket_cfg !\n");
+	bufferevent_set_rate_limit(bev, cfg );	
+	ev_token_bucket_cfg_free( cfg ); 
+	/*
+		速率限制模型
+		
+		libevent的速率限制使用记号存储器(token bucket)算法确定在某时刻可以写入或者读取多少字节
+		
+		每个速率限制对象在任何给定时刻都有一个读存储器(read bucket)和一个写存储器(write bucket)
+		其大小决定了对象允许立即读取或者写入多少字节
+		
+		每个bucket有一个填充速率，一个最大突发尺寸，和一个时间单位，或者说“滴答 tick ”
+		
+		填充速率决定了对象发送或者接收字节的最大平均速率
+		突发尺寸决定了在单次突发中可以发送或者接收的最大字节数
+		时间单位则确定了传输的平滑程度
+		
+		如果tick_len参数为NULL，则默认的滴答长度为一秒。 
+		read_rate和write_rate参数的单位是字节每滴答。
+		
+		也就是说，如果滴答长度是十分之一秒，read_rate是300，则最大平均读取速率是3000字节每秒
+
+	*/
+	
 	
 	return bev;
 }
