@@ -164,9 +164,21 @@ int main(int argc, char** argv){
 
 	// socket的创建和连接都交给bufferevent 
     bufferevent_socket_connect(bev, (struct sockaddr *)&server_addr,  sizeof(server_addr));
-
     bufferevent_setcb(bev, server_msg_cb, NULL, event_cb, (void*)ev_cmd);
     bufferevent_enable(bev, EV_READ | EV_PERSIST);
+	/*
+		bufferevent_socket_connect 
+		1.目前仅能工作在流式协议上，比如TCP  未来可能会支持数据报协议 比如UDP
+		2.connect的时候也是非阻塞的  所以要注意事件回调函数 
+		3.水位数(读写 高低 )
+		
+		基于socket的bufferevent： 	bufferevent_socket_new
+			在底层流式socket上发送和接收数据，使用event_*接口作为其后端
+		过滤型的bufferevent： 		bufferevent_filter_new
+			在数据传送到底层bufferevent对象之前，对到来和外出的数据进行前期处理的bufferevent，比如对数据进行压缩或者转换
+		成对的bufferevent：			bufferevent_pair_new	
+	*/
+	
 
 	// 循环监听
 	// 当已经拥有注册了IO复用方法的`event_base`后，可以通过`event_loop`来监听并接受IO事件
