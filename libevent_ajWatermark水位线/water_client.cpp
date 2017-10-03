@@ -41,9 +41,15 @@ void read_cmd_callback(int fd, short events/*事件的类型*/, void* arg){
 	struct evbuffer* output = bufferevent_get_output(bev);
 	
 	if( ! strncmp(msg,"write" , strlen("write") ) ){
-		printf("INFO:enable write buffer now!");
+		printf("INFO:enable write buffer now!\n");
 		bufferevent_enable(bev,EV_WRITE); // enable之后会把之前的write的数据一次写到fd 
 	}
+	
+	if( ! strncmp(msg,"read" , strlen("read") ) ){
+		printf("INFO:enable read buffer now!\n");
+		bufferevent_enable(bev,EV_READ);  
+	}
+	
     //bufferevent_write(bev, msg, ret);
 	evbuffer_add_printf(output,">>%s", msg); // 这里会加多两个字节
 	
@@ -113,6 +119,15 @@ void event_callback(struct bufferevent *bev, short events, void *ctx)
 	if (events & BEV_EVENT_CONNECTED) { // connect socket 已经连接上 
          printf("Connect okay.\n");
     } 
+	
+	if (events &(BEV_EVENT_TIMEOUT|BEV_EVENT_READING) ){ // 读超时 
+		printf("read timeout !\n");
+	}
+	
+	if (events & (BEV_EVENT_TIMEOUT|BEV_EVENT_WRITING) ){ // 写超时
+		printf("write timeout !\n");
+	}
+	
     if (events & BEV_EVENT_EOF) {
         size_t len = evbuffer_get_length(input);
         printf("Got a close from %s.  We drained %lu bytes from it, "
@@ -162,7 +177,32 @@ struct bufferevent * setup_bufferevent(struct event_base*base , const short port
     bufferevent_setcb(bev, read_callback, NULL, event_callback, info1);
     bufferevent_enable(bev, EV_READ);    // 默认情况 没使能写功能
 	bufferevent_disable(bev,EV_WRITE);// 默认情况 使能写功能  所以可以通过evbuffer_add_printf等写数据到fd 
-    return bev;
+    
+	const struct timeval timeout = {2,0};
+	bufferevent_set_timeouts(bev ,&timeout, &timeout);
+	
+	/*
+		只有在bufferevent读或写的时候，才会对超时时间进行计时。
+		
+
+		如果bufferevent上禁止了读操作，或者当输入缓冲区满（达到高水位线）时，
+				则读超时时间不会使能。
+		
+		如果写操作未被使能，或者没有数据可写，
+				则写超时时间也会被禁止。
+				
+		也就是超时 是 fd/socket 没有数据过来(读超时) 或者 数据不能传送出去(写超时)
+	
+		当读或写超时发生的时候，则bufferevent上相应的读写操作就会被禁止
+		
+		event回调函数就会以
+		BEV_EVENT_TIMEOUT|BEV_EVENT_READING
+		或
+		BEV_EVENT_TIMEOUT|BEV_EVENT_WRITING
+		进行调用
+	*/
+	
+	return bev;
 }
 
 int main(int argc, char** argv){
